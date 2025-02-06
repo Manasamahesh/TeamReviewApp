@@ -1,0 +1,112 @@
+module Main where
+
+import Daml.Script
+
+
+template Review
+    with 
+        student : Party
+        studentInfo: [Text]
+        projectName : Text
+        lecture: Party
+        peers: Party
+        teamLeader : Party
+        courseId : Text
+        courseName: Text
+        projectStartDate: Date
+        projectEndDate: Date
+        taskName: Text
+        taskDescription: Text
+        taskAssignedDate: Date
+        taskEndDate: Date
+        rating: Int
+        reviewDescription: Text
+    where
+        signatory teamLeader, lecture
+        observer lecture, peers, student
+        ensure student /= peers && student /= teamLeader
+        key (lecture, teamLeader,student,projectName,taskName): (Party,Party,Party,Text,Text)
+        maintainer key._1
+        
+        choice CreateReview : ContractId Review with 
+                student : Party
+                projectName : Text
+                teamLeader : Party
+                courseId : Text
+                courseName: Text
+                projectStartDate: Date
+                projectEndDate: Date
+                taskName: Text
+                taskDescription: Text
+                taskAssignedDate: Date
+                taskEndDate: Date
+            controller lecture
+            do
+                create this with student = student,
+                                        projectName = projectName,
+                                        teamLeader = teamLeader,
+                                        courseId = courseId,
+                                        courseName = courseName,
+                                        projectStartDate = projectStartDate,
+                                        projectEndDate = projectEndDate,
+                                        taskName = taskName,
+                                        taskDescription = taskDescription,
+                                        taskAssignedDate = taskAssignedDate,
+                                        taskEndDate = taskEndDate,
+                                        rating = rating,
+                                        reviewDescription = reviewDescription
+        choice AddRating: ContractId Review
+                with
+                    rating : Int
+                    reviewDescription: Text 
+                controller teamLeader, lecture, peers
+                do
+                assertMsg "teamLeader cannot rate by themselves"(teamLeader /= student)
+                create this with rating = rating, reviewDescription = reviewDescription  
+
+        choice RemoveRating: ContractId Review
+                with 
+                    studentName : Text
+                    taskName : Text
+                    projectName : Text
+                    lecture : Party
+                    teamLeader : Party
+                controller lecture
+                do 
+                contractData <- fetchByKey (lecture, teamLeader, student, projectName, taskName)
+                contractDetails <- fetch contractData._1
+                archive contractDetails
+                return contractDetails  
+
+        choice UpdateRating: ContractId Review
+                with
+                    rating : Int
+                    reviewDescription: Text
+                    studentName : Text
+                    taskName : Text
+                    projectName : Text
+                    lecture : Party
+                    teamLeader : Party
+                    projectStartDate: Date
+                    projectEndDate: Date
+                    taskAssignedDate: Date
+                    taskEndDate: Date
+                controller lecture, teamLeader  
+                do
+                assertMsg "teamLeader cannot rate by themselves"(teamLeader /= student)
+                contractData <- fetchByKey (lecture, teamLeader, student, projectName, taskName)
+                contractDetails <- fetch contractData._1
+                archive contractDetails
+                create this with rating = rating, reviewDescription = reviewDescription, projectStartDate = projectStartDate, projectEndDate = projectEndDate, taskAssignedDate = taskAssignedDate, taskEndDate = taskEndDate
+
+        choice ReturnUserRating : ContractId Review
+                with
+                    studentName : Text
+                    taskName : Text
+                    projectName : Text
+                    lecture : Party
+                    teamLeader : Party
+                controller lecture
+                do
+                fetchByKey (lecture, teamLeader, student, projectName, taskName) 
+                

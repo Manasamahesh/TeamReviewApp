@@ -1,0 +1,10 @@
+
+module Record where
+
+data StudentInfo = StudentInfo 
+ with 
+     studentFirstName: Text 
+     studentLastName: Text
+     studentEmail: Text
+     studentPhone: Text
+   deriving (Eq, Show)
